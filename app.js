@@ -4,13 +4,14 @@
 
 const CONFIG = {
   decks: {
-    "Interview Questions": {
+    "BANKI": {
       persona: `You are a hiring manager and career coach whose professional success is directly tied to this candidate getting the job. You care deeply about clear communication, confident framing, structured answers (like STAR method where relevant), and whether this answer would actually land well in a real interview with a skeptical interviewer. Be rigorous, specific, and encouraging. Call out vague language, filler words, or missing specifics.`,
       teachingPersona: null,
     },
-    "JavaScript & TypeScript": {
+    "JavaScript/TypeScript": {
       persona: `You are a staff software engineer and natural teacher at a top tech company. You care about technical precision, edge cases, and whether the candidate truly understands the concept versus pattern-matching to a memorized answer. You push for depth: gotchas, browser/runtime differences, performance implications, real-world usage. Be direct and specific. Praise what's right before addressing gaps.`,
       teachingPersona: null,
+      stripExamples: true,
     },
   },
   defaultPersona: `You are a knowledgeable tutor who grades flashcard answers fairly and gives specific, actionable feedback. Be honest about gaps and encouraging about strengths.`,
@@ -70,8 +71,17 @@ async function submitCardGrade(cardId, ease) {
 
 function stripHtml(html) {
   const tmp = document.createElement("div");
-  tmp.innerHTML = html;
+  tmp.innerHTML = html; // safe: only textContent is read back, never rendered
   return tmp.textContent || tmp.innerText || "";
+}
+
+function stripCodeBlocks(html) {
+  return html.replace(/<pre[^>]*>[\s\S]*?<\/pre>/gi, "");
+}
+
+function extractCardText(html, deckName) {
+  const deck = CONFIG.decks[deckName];
+  return stripHtml(deck?.stripExamples ? stripCodeBlocks(html) : html).trim();
 }
 
 // ── Screen management ────────────────────────────────────────────────────────
@@ -199,7 +209,7 @@ function loadCard() {
   document.getElementById("progressFill").style.width = `${((index) / total) * 100}%`;
 
   // Card text
-  const front = stripHtml(card.fields[Object.keys(card.fields)[0]].value);
+  const front = extractCardText(card.fields[Object.keys(card.fields)[0]].value, state.currentDeck);
   document.getElementById("cardText").textContent = front;
 
   // Reset UI state
@@ -329,15 +339,19 @@ function stopRecording() {
 // ── Grading ──────────────────────────────────────────────────────────────────
 async function gradeAnswer(transcript) {
   const card = state.currentCard;
-  const front = stripHtml(card.fields[Object.keys(card.fields)[0]].value);
-  const back = stripHtml(card.fields[Object.keys(card.fields)[1]].value);
+  const front = extractCardText(card.fields[Object.keys(card.fields)[0]].value, state.currentDeck);
+  const back = extractCardText(card.fields[Object.keys(card.fields)[1]].value, state.currentDeck);
   const persona = getPersona(state.currentDeck);
 
   document.getElementById("gradingSpinner").style.display = "flex";
 
+  const examplesNote = CONFIG.decks[state.currentDeck]?.stripExamples
+    ? "\nNote: code examples have been stripped from this card. Grade on conceptual understanding only — do not penalize the student for not reciting specific syntax or example code."
+    : "";
+
   const prompt = `${persona}
 
-You are grading a flashcard answer. Respond ONLY with a JSON object, no markdown, no preamble.
+You are grading a flashcard answer. Respond ONLY with a JSON object, no markdown, no preamble.${examplesNote}
 
 Card front: ${front}
 Correct answer: ${back}
@@ -366,7 +380,7 @@ Grading rubric:
         "anthropic-dangerous-direct-browser-access": "true",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 1000,
         messages: [{ role: "user", content: prompt }],
       }),
@@ -462,7 +476,7 @@ function openTeaching() {
 
   // Initial calibration question
   const card = state.currentCard;
-  const front = stripHtml(card.fields[Object.keys(card.fields)[0]].value);
+  const front = extractCardText(card.fields[Object.keys(card.fields)[0]].value, state.currentDeck);
 
   const question = `Before I explain, help me calibrate. How would you describe your familiarity with the concept behind: "${front}"?`;
 
@@ -517,8 +531,8 @@ async function sendTeachMessage() {
 
 async function fetchTeachResponse() {
   const card = state.currentCard;
-  const front = stripHtml(card.fields[Object.keys(card.fields)[0]].value);
-  const back = stripHtml(card.fields[Object.keys(card.fields)[1]].value);
+  const front = extractCardText(card.fields[Object.keys(card.fields)[0]].value, state.currentDeck);
+  const back = extractCardText(card.fields[Object.keys(card.fields)[1]].value, state.currentDeck);
   const persona = getPersona(state.currentDeck);
   const transcript = state.transcript;
 
@@ -546,7 +560,7 @@ Teach clearly and specifically. Use examples where helpful. Keep responses focus
         "anthropic-dangerous-direct-browser-access": "true",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 1000,
         system: systemPrompt,
         messages,
