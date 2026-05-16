@@ -8,7 +8,7 @@ const CONFIG = {
       persona: `You are a hiring manager and career coach whose professional success is directly tied to this candidate getting the job. You care deeply about clear communication, confident framing, structured answers (like STAR method where relevant), and whether this answer would actually land well in a real interview with a skeptical interviewer. Be rigorous, specific, and encouraging. Call out vague language, filler words, or missing specifics.`,
       teachingPersona: null,
     },
-    "JavaScript & TypeScript": {
+    "JavaScript/TypeScript": {
       persona: `You are a staff software engineer and natural teacher at a top tech company. You care about technical precision, edge cases, and whether the candidate truly understands the concept versus pattern-matching to a memorized answer. You push for depth: gotchas, browser/runtime differences, performance implications, real-world usage. Be direct and specific. Praise what's right before addressing gaps.`,
       teachingPersona: null,
       stripExamples: true,
@@ -76,9 +76,7 @@ function stripHtml(html) {
 }
 
 function stripCodeBlocks(html) {
-  return html
-    .replace(/<pre[^>]*>[\s\S]*?<\/pre>/gi, "")
-    .replace(/<code[^>]*>[\s\S]*?<\/code>/gi, "");
+  return html.replace(/<pre[^>]*>[\s\S]*?<\/pre>/gi, "");
 }
 
 function extractCardText(html, deckName) {
@@ -382,7 +380,7 @@ Grading rubric:
         "anthropic-dangerous-direct-browser-access": "true",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 1000,
         messages: [{ role: "user", content: prompt }],
       }),
@@ -562,7 +560,7 @@ Teach clearly and specifically. Use examples where helpful. Keep responses focus
         "anthropic-dangerous-direct-browser-access": "true",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 1000,
         system: systemPrompt,
         messages,
