@@ -13,5 +13,6 @@
 *.log
 npm-debug.log*
 
-# Node (if ever added)
+# Node
 node_modules/
+package-lock.json

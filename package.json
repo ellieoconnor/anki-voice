@@ -1,0 +1,13 @@
+{
+  "name": "anki-voice",
+  "version": "1.0.0",
+  "description": "Answer Anki flashcards out loud. AI grades your spoken answers.",
+  "private": true,
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3"
+  }
+}

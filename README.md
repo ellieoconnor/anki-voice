@@ -13,24 +13,27 @@ Answer your Anki flashcards out loud. AI grades your spoken answers and teaches 
 ## Setup
 
 ### 1. Install AnkiConnect
+
 In Anki: **Tools → Add-ons → Get Add-ons** → paste code `2055492159` → restart Anki.
 
 ### 2. Configure your deck personas (optional but recommended)
+
 Open `app.js` and edit the `CONFIG` object at the top. Add an entry for each deck you want a custom persona for. The key must match your Anki deck name exactly.
 
 ```js
 const CONFIG = {
   decks: {
-    "Your Deck Name": {
-      persona: "You are a [role]. You care about [what matters]. [How to give feedback].",
+    'Your Deck Name': {
+      persona: 'You are a [role]. You care about [what matters]. [How to give feedback].',
       teachingPersona: null, // null = use same persona for teaching
     },
   },
-  defaultPersona: "You are a knowledgeable tutor...",
+  defaultPersona: 'You are a knowledgeable tutor...',
 };
 ```
 
 ### 3. Start the local server
+
 Open a terminal in this folder and run:
 
 ```bash
@@ -38,9 +41,11 @@ python3 -m http.server 8080
 ```
 
 ### 4. Open the app
+
 With Anki open, go to: **http://localhost:8080**
 
 ### 5. Enter your API key
+
 Paste your Claude API key on the setup screen. It's saved to your browser's localStorage and never sent anywhere except Anthropic's API.
 
 ## How it works

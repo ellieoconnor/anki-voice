@@ -1,151 +1,182 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Anki Voice</title>
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
-</head>
-<body>
-
-  <!-- SETUP SCREEN -->
-  <div id="screen-setup" class="screen active">
-    <div class="setup-wrap">
-      <div class="setup-card">
-        <div class="setup-logo">
-          <i class="ti ti-speakerphone" aria-hidden="true"></i>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anki Voice</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"
+    />
+  </head>
+  <body>
+    <!-- SETUP SCREEN -->
+    <div id="screen-setup" class="screen active">
+      <div class="setup-wrap">
+        <div class="setup-card">
+          <div class="setup-logo">
+            <i class="ti ti-speakerphone" aria-hidden="true"></i>
+          </div>
+          <h1 class="setup-title">Anki Voice</h1>
+          <p class="setup-sub">
+            Answer your flashcards out loud. AI grades your answers and teaches you what you missed.
+          </p>
+          <div class="setup-field">
+            <label class="setup-label" for="apiKeyInput">Claude API key</label>
+            <input
+              class="setup-input"
+              type="password"
+              id="apiKeyInput"
+              placeholder="sk-ant-..."
+              autocomplete="off"
+            />
+            <p class="setup-hint">
+              Saved to localStorage. Never sent anywhere except Anthropic's API.
+            </p>
+          </div>
+          <div id="setupError" class="setup-error" style="display: none"></div>
+          <button class="setup-submit" id="setupBtn" onclick="handleSetup()">
+            Connect to Anki
+          </button>
         </div>
-        <h1 class="setup-title">Anki Voice</h1>
-        <p class="setup-sub">Answer your flashcards out loud. AI grades your answers and teaches you what you missed.</p>
-        <div class="setup-field">
-          <label class="setup-label" for="apiKeyInput">Claude API key</label>
-          <input class="setup-input" type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off" />
-          <p class="setup-hint">Saved to localStorage. Never sent anywhere except Anthropic's API.</p>
+      </div>
+    </div>
+
+    <!-- DECK SELECT SCREEN -->
+    <div id="screen-deck" class="screen">
+      <div class="deck-wrap">
+        <p class="deck-heading">Choose a deck</p>
+        <p class="deck-sub">Only decks with cards due today are shown.</p>
+        <div class="deck-list" id="deckList">
+          <!-- populated by JS -->
         </div>
-        <div id="setupError" class="setup-error" style="display:none;"></div>
-        <button class="setup-submit" id="setupBtn" onclick="handleSetup()">
-          Connect to Anki
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- DECK SELECT SCREEN -->
-  <div id="screen-deck" class="screen">
-    <div class="deck-wrap">
-      <p class="deck-heading">Choose a deck</p>
-      <p class="deck-sub">Only decks with cards due today are shown.</p>
-      <div class="deck-list" id="deckList">
-        <!-- populated by JS -->
-      </div>
-      <button class="link-btn" onclick="handleLogout()">Change API key</button>
-    </div>
-  </div>
-
-  <!-- SESSION SCREEN -->
-  <div id="screen-session" class="screen">
-    <div class="topbar">
-      <span class="topbar-title" id="topbarDeckName"></span>
-      <div class="topbar-right">
-        <span class="progress-text" id="progressText"></span>
-        <button class="end-btn" onclick="handleEndSession()">End session</button>
+        <button class="link-btn" onclick="handleLogout()">Change API key</button>
       </div>
     </div>
 
-    <div class="session-body">
-      <div class="progress-bar-wrap">
-        <div class="progress-bar-fill" id="progressFill"></div>
-      </div>
-
-      <div class="card" id="cardDisplay">
-        <span class="card-label">Front</span>
-        <p class="card-text" id="cardText"></p>
-      </div>
-
-      <div class="record-zone">
-        <button class="record-btn" id="recordBtn" onclick="toggleRecord()" aria-label="Record answer">
-          <i class="ti ti-microphone" aria-hidden="true"></i>
-        </button>
-        <span class="record-label" id="recordLabel">Click to record your answer</span>
-      </div>
-
-      <div class="transcript-box" id="transcriptBox" style="display:none;">
-        <span class="transcript-label">Your answer</span>
-        <p id="transcriptText"></p>
-      </div>
-
-      <div class="feedback-panel" id="feedbackPanel" style="display:none;">
-        <div class="feedback-header">
-          <span class="feedback-persona" id="feedbackPersona"></span>
-          <span class="feedback-score" id="feedbackScore"></span>
+    <!-- SESSION SCREEN -->
+    <div id="screen-session" class="screen">
+      <div class="topbar">
+        <span class="topbar-title" id="topbarDeckName"></span>
+        <div class="topbar-right">
+          <span class="progress-text" id="progressText"></span>
+          <button class="end-btn" onclick="handleEndSession()">End session</button>
         </div>
-        <div class="feedback-body" id="feedbackBody"></div>
       </div>
 
-      <div class="grade-row" id="gradeRow" style="display:none;">
-        <button class="grade-btn again" onclick="submitGrade(1)" id="gradeAgain">
-          <span class="grade-name">Again</span>
-          <span class="grade-interval" id="intervalAgain"></span>
-        </button>
-        <button class="grade-btn hard" onclick="submitGrade(2)" id="gradeHard">
-          <span class="grade-name">Hard</span>
-          <span class="grade-interval" id="intervalHard"></span>
-        </button>
-        <button class="grade-btn good" onclick="submitGrade(3)" id="gradeGood">
-          <span class="grade-name">Good</span>
-          <span class="grade-interval" id="intervalGood"></span>
-        </button>
-        <button class="grade-btn easy" onclick="submitGrade(4)" id="gradeEasy">
-          <span class="grade-name">Easy</span>
-          <span class="grade-interval" id="intervalEasy"></span>
+      <div class="session-body">
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+
+        <div class="card" id="cardDisplay">
+          <span class="card-label">Front</span>
+          <p class="card-text" id="cardText"></p>
+        </div>
+
+        <div class="record-zone">
+          <button
+            class="record-btn"
+            id="recordBtn"
+            onclick="toggleRecord()"
+            aria-label="Record answer"
+          >
+            <i class="ti ti-microphone" aria-hidden="true"></i>
+          </button>
+          <span class="record-label" id="recordLabel">Click to record your answer</span>
+        </div>
+
+        <div class="transcript-box" id="transcriptBox" style="display: none">
+          <span class="transcript-label">Your answer</span>
+          <p id="transcriptText"></p>
+        </div>
+
+        <div class="feedback-panel" id="feedbackPanel" style="display: none">
+          <div class="feedback-header">
+            <span class="feedback-persona" id="feedbackPersona"></span>
+            <span class="feedback-score" id="feedbackScore"></span>
+          </div>
+          <div class="feedback-body" id="feedbackBody"></div>
+        </div>
+
+        <div class="grade-row" id="gradeRow" style="display: none">
+          <button class="grade-btn again" onclick="submitGrade(1)" id="gradeAgain">
+            <span class="grade-name">Again</span>
+            <span class="grade-interval" id="intervalAgain"></span>
+          </button>
+          <button class="grade-btn hard" onclick="submitGrade(2)" id="gradeHard">
+            <span class="grade-name">Hard</span>
+            <span class="grade-interval" id="intervalHard"></span>
+          </button>
+          <button class="grade-btn good" onclick="submitGrade(3)" id="gradeGood">
+            <span class="grade-name">Good</span>
+            <span class="grade-interval" id="intervalGood"></span>
+          </button>
+          <button class="grade-btn easy" onclick="submitGrade(4)" id="gradeEasy">
+            <span class="grade-name">Easy</span>
+            <span class="grade-interval" id="intervalEasy"></span>
+          </button>
+        </div>
+
+        <div id="gradingSpinner" style="display: none" class="spinner-wrap">
+          <span class="spinner"></span>
+          <span class="spinner-label">Grading your answer...</span>
+        </div>
+
+        <button class="teach-btn" id="teachBtn" style="display: none" onclick="openTeaching()">
+          <i class="ti ti-school" aria-hidden="true"></i>
+          Teach me this
         </button>
       </div>
-
-      <div id="gradingSpinner" style="display:none;" class="spinner-wrap">
-        <span class="spinner"></span>
-        <span class="spinner-label">Grading your answer...</span>
-      </div>
-
-      <button class="teach-btn" id="teachBtn" style="display:none;" onclick="openTeaching()">
-        <i class="ti ti-school" aria-hidden="true"></i>
-        Teach me this
-      </button>
     </div>
-  </div>
 
-  <!-- SESSION COMPLETE SCREEN -->
-  <div id="screen-complete" class="screen">
-    <div class="complete-wrap">
-      <div class="complete-icon"><i class="ti ti-circle-check" aria-hidden="true"></i></div>
-      <h2 class="complete-title">Session complete</h2>
-      <p class="complete-sub" id="completeStats"></p>
-      <div class="complete-breakdown" id="completeBreakdown"></div>
-      <button class="setup-submit" onclick="goToDeckSelect()">Back to decks</button>
-    </div>
-  </div>
-
-  <!-- TEACHING OVERLAY -->
-  <div class="teach-overlay" id="teachOverlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Teaching mode">
-    <div class="teach-panel" id="teachPanel">
-      <div class="teach-header">
-        <span class="teach-title">Teach me this</span>
-        <button class="teach-close" onclick="closeTeaching()" aria-label="Close teaching mode">
-          <i class="ti ti-x" aria-hidden="true"></i>
-        </button>
-      </div>
-      <div class="teach-messages" id="teachMessages"></div>
-      <div class="teach-options" id="teachOptions"></div>
-      <div class="teach-input-row" id="teachInputRow" style="display:none;">
-        <input class="teach-input" id="teachInput" placeholder="Ask a follow-up..." onkeydown="if(event.key==='Enter') sendTeachMessage()" />
-        <button class="teach-send" onclick="sendTeachMessage()"><i class="ti ti-arrow-up" aria-hidden="true"></i></button>
-      </div>
-      <div id="teachSpinner" style="display:none;" class="spinner-wrap">
-        <span class="spinner"></span>
+    <!-- SESSION COMPLETE SCREEN -->
+    <div id="screen-complete" class="screen">
+      <div class="complete-wrap">
+        <div class="complete-icon"><i class="ti ti-circle-check" aria-hidden="true"></i></div>
+        <h2 class="complete-title">Session complete</h2>
+        <p class="complete-sub" id="completeStats"></p>
+        <div class="complete-breakdown" id="completeBreakdown"></div>
+        <button class="setup-submit" onclick="goToDeckSelect()">Back to decks</button>
       </div>
     </div>
-  </div>
 
-  <script src="app.js"></script>
-</body>
+    <!-- TEACHING OVERLAY -->
+    <div
+      class="teach-overlay"
+      id="teachOverlay"
+      style="display: none"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Teaching mode"
+    >
+      <div class="teach-panel" id="teachPanel">
+        <div class="teach-header">
+          <span class="teach-title">Teach me this</span>
+          <button class="teach-close" onclick="closeTeaching()" aria-label="Close teaching mode">
+            <i class="ti ti-x" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="teach-messages" id="teachMessages"></div>
+        <div class="teach-options" id="teachOptions"></div>
+        <div class="teach-input-row" id="teachInputRow" style="display: none">
+          <input
+            class="teach-input"
+            id="teachInput"
+            placeholder="Ask a follow-up..."
+            onkeydown="if (event.key === 'Enter') sendTeachMessage();"
+          />
+          <button class="teach-send" onclick="sendTeachMessage()">
+            <i class="ti ti-arrow-up" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div id="teachSpinner" style="display: none" class="spinner-wrap">
+          <span class="spinner"></span>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
 </html>
