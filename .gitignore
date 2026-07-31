@@ -16,3 +16,6 @@ npm-debug.log*
 # Node
 node_modules/
 package-lock.json
+
+# AI
+agents/
