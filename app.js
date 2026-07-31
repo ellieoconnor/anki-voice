@@ -1,20 +1,24 @@
 // ── Config ──────────────────────────────────────────────────────────────────
 // Add your deck personas here. The key must match your Anki deck name exactly.
 // teachingPersona defaults to the same persona if null.
+// name is a short display label shown in the feedback panel and deck list.
 
 const CONFIG = {
   decks: {
     BANKI: {
-      persona: `You are a hiring manager and career coach whose professional success is directly tied to this candidate getting the job. You care deeply about clear communication, confident framing, structured answers (like STAR method where relevant), and whether this answer would actually land well in a real interview with a skeptical interviewer. Be rigorous, specific, and encouraging. Call out vague language, filler words, or missing specifics.`,
+      name: 'Hiring manager',
+      persona: `You are a hiring manager and career coach whose professional success is directly tied to this candidate getting the job. You care deeply about clear communication, confident framing, structured answers (like the STAR-L method — Situation, Task, Action, Result, Learned — where relevant), and whether this answer would actually land well in a real interview with a skeptical interviewer. Be rigorous, specific, and encouraging. Call out vague language, filler words, or missing specifics — including a missing Learned/takeaway component when the answer would benefit from one.`,
       teachingPersona: null,
     },
     'JavaScript/TypeScript': {
+      name: 'Staff engineer',
       persona: `You are a staff software engineer and natural teacher at a top tech company. You care about technical precision, edge cases, and whether the candidate truly understands the concept versus pattern-matching to a memorized answer. You push for depth: gotchas, browser/runtime differences, performance implications, real-world usage. Be direct and specific. Praise what's right before addressing gaps.`,
       teachingPersona: null,
       stripExamples: true,
     },
   },
   defaultPersona: `You are a knowledgeable tutor who grades flashcard answers fairly and gives specific, actionable feedback. Be honest about gaps and encouraging about strengths.`,
+  model: 'claude-sonnet-4-6',
 };
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -69,6 +73,43 @@ async function submitCardGrade(cardId, ease) {
   });
 }
 
+async function callClaude(body) {
+  let response;
+  try {
+    response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': state.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    throw new Error(
+      'Could not reach the Claude API. Check your internet connection and try again.',
+    );
+  }
+
+  if (response.status === 401) {
+    throw new Error(
+      'Claude API rejected your API key (401 Unauthorized). Check that it is correct and active at console.anthropic.com.',
+    );
+  }
+  if (response.status === 404) {
+    throw new Error(
+      `Claude API returned 404 for model "${body.model}". It may have been retired — check console.anthropic.com for a current model ID and update CONFIG.model in app.js.`,
+    );
+  }
+  if (!response.ok) {
+    throw new Error(`Claude API request failed (HTTP ${response.status}).`);
+  }
+
+  const data = await response.json();
+  return data.content[0].text.trim();
+}
+
 function stripHtml(html) {
   const tmp = document.createElement('div');
   tmp.innerHTML = html; // safe: only textContent is read back, never rendered
@@ -92,6 +133,11 @@ function showScreen(name) {
 
 // ── Setup ────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
+  if (window.location.protocol === 'file:') {
+    showScreen('file-protocol');
+    return;
+  }
+
   const saved = localStorage.getItem('anki-voice-api-key');
   if (saved) {
     state.apiKey = saved;
@@ -163,17 +209,33 @@ async function loadDecks() {
 
     listEl.innerHTML = '';
     deckDue.forEach(({ name, due }) => {
+      const isCustom = hasCustomPersona(name);
       const item = document.createElement('div');
       item.className = 'deck-item';
       item.innerHTML = `
         <span class="deck-name">${name}</span>
-        <span class="deck-due">${due} due</span>
+        <span class="deck-item-right">
+          <span class="deck-persona-tag ${isCustom ? 'custom' : ''}">${isCustom ? 'Custom' : 'Default'}</span>
+          <span class="deck-due">${due} due</span>
+        </span>
       `;
       item.onclick = () => startSession(name);
       listEl.appendChild(item);
     });
   } catch (e) {
-    listEl.innerHTML = `<p class="deck-empty" style="color:#e57373;">Could not load decks. Is Anki open?</p>`;
+    listEl.innerHTML = `
+      <p class="deck-empty" style="color:#e57373;">
+        Could not connect to Anki. Either Anki isn't open, or AnkiConnect is blocking requests
+        from this origin (CORS) — browsers can't tell these apart, so both show up as the same
+        failure.
+      </p>
+      <p class="deck-error-hint">
+        First, make sure Anki is running with the AnkiConnect add-on installed. If it is, open
+        Anki → Tools → Add-ons → AnkiConnect → Config and make sure <code>webCorsOriginList</code>
+        includes this origin:
+      </p>
+      <pre class="code-block">"webCorsOriginList": ["${window.location.origin}"]</pre>
+    `;
   }
 }
 
@@ -373,37 +435,37 @@ Grading rubric:
 - good: Correct with minor gaps or imprecision (B- to A)
 - easy: Completely correct, precise, confident — nothing to add (A+)`;
 
+  let text;
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': state.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
+    text = await callClaude({
+      model: CONFIG.model,
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }],
     });
-
-    const data = await response.json();
-    const text = data.content[0].text.trim();
-    const clean = text.replace(/```json|```/g, '').trim();
-    const result = JSON.parse(clean);
-
-    document.getElementById('gradingSpinner').style.display = 'none';
-    showFeedback(result);
   } catch (e) {
     document.getElementById('gradingSpinner').style.display = 'none';
     showFeedback({
       grade: 'good',
       scoreLabel: 'Error',
-      feedback: 'Could not grade automatically. Please grade manually.',
+      feedback: `${e.message} Please grade manually.`,
     });
     console.error('Grading error:', e);
+    return;
+  }
+
+  document.getElementById('gradingSpinner').style.display = 'none';
+  try {
+    const clean = text.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
+    showFeedback(result);
+  } catch (e) {
+    showFeedback({
+      grade: 'good',
+      scoreLabel: 'Error',
+      feedback:
+        "Claude's response wasn't valid JSON, so it couldn't be parsed. Please grade manually.",
+    });
+    console.error('Grading error: could not parse Claude response as JSON:', e);
   }
 }
 
@@ -554,31 +616,19 @@ Teach clearly and specifically. Use examples where helpful. Keep responses focus
   const messages = state.teachHistory.map((m) => ({ role: m.role, content: m.content }));
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': state.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages,
-      }),
+    const reply = await callClaude({
+      model: CONFIG.model,
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages,
     });
-
-    const data = await response.json();
-    const reply = data.content[0].text.trim();
 
     state.teachHistory.push({ role: 'assistant', content: reply });
     document.getElementById('teachSpinner').style.display = 'none';
     addTeachMessage('tutor', reply);
   } catch (e) {
     document.getElementById('teachSpinner').style.display = 'none';
-    addTeachMessage('tutor', 'Something went wrong. Please try again.');
+    addTeachMessage('tutor', e.message);
     console.error('Teaching error:', e);
   }
 }
@@ -620,15 +670,17 @@ function showComplete() {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
 function getPersona(deckName) {
   return CONFIG.decks[deckName]?.persona || CONFIG.defaultPersona;
 }
 
 function getPersonaName(deckName) {
-  const deck = deckName?.toLowerCase() || '';
-  if (deck.includes('interview')) return 'Hiring manager';
-  if (deck.includes('javascript') || deck.includes('typescript')) return 'Staff engineer';
-  return 'Tutor';
+  return CONFIG.decks[deckName]?.name || 'Default tutor';
+}
+
+function hasCustomPersona(deckName) {
+  return Boolean(CONFIG.decks[deckName]);
 }
 
 function capitalize(str) {

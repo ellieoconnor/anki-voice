@@ -24,6 +24,7 @@ Open `app.js` and edit the `CONFIG` object at the top. Add an entry for each dec
 const CONFIG = {
   decks: {
     'Your Deck Name': {
+      name: 'Short display name', // shown in the feedback panel and deck list
       persona: 'You are a [role]. You care about [what matters]. [How to give feedback].',
       teachingPersona: null, // null = use same persona for teaching
     },
@@ -31,6 +32,8 @@ const CONFIG = {
   defaultPersona: 'You are a knowledgeable tutor...',
 };
 ```
+
+Decks with an entry here show a **Custom** tag on the deck select screen; decks without one show **Default** and use `defaultPersona`.
 
 ### 3. Start the local server
 
@@ -47,6 +50,8 @@ With Anki open, go to: **http://localhost:8080**
 ### 5. Enter your API key
 
 Paste your Claude API key on the setup screen. It's saved to your browser's localStorage and never sent anywhere except Anthropic's API.
+
+Your API key comes from [console.anthropic.com](https://console.anthropic.com), not claude.ai — a paid Claude.ai subscription does **not** include API access. API usage is billed separately, pay-as-you-go; a typical study session costs well under $0.10.
 
 ## How it works
 

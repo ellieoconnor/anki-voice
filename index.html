@@ -11,6 +11,30 @@
     />
   </head>
   <body>
+    <!-- FILE PROTOCOL WARNING SCREEN -->
+    <div id="screen-file-protocol" class="screen">
+      <div class="setup-wrap">
+        <div class="setup-card">
+          <div class="setup-logo">
+            <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+          </div>
+          <h1 class="setup-title">Serve this app, don't open the file</h1>
+          <p class="setup-sub">
+            You opened <code>index.html</code> directly from disk (<code>file://</code>). Chrome
+            silently blocks microphone access under <code>file://</code>, so recording will never
+            start — with no visible error.
+          </p>
+          <p class="setup-sub">Open a terminal in this folder and run:</p>
+          <pre class="code-block">python3 -m http.server 8080</pre>
+          <p class="setup-sub">
+            Then, with Anki open, visit
+            <code>http://localhost:8080</code>
+            in your browser.
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- SETUP SCREEN -->
     <div id="screen-setup" class="screen active">
       <div class="setup-wrap">
@@ -33,6 +57,14 @@
             />
             <p class="setup-hint">
               Saved to localStorage. Never sent anywhere except Anthropic's API.
+            </p>
+            <p class="setup-hint">
+              This key comes from
+              <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer"
+                >console.anthropic.com</a
+              >, not claude.ai — a paid Claude.ai subscription does not include API access. API
+              usage is billed separately, pay-as-you-go; a typical study session costs well under
+              $0.10.
             </p>
           </div>
           <div id="setupError" class="setup-error" style="display: none"></div>
