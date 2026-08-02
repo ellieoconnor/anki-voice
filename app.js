@@ -125,6 +125,10 @@ function extractCardText(html, deckName) {
   return stripHtml(deck?.stripExamples ? stripCodeBlocks(html) : html).trim();
 }
 
+function hasAnswerField(card) {
+  return Object.keys(card.fields).length >= 2;
+}
+
 // ── Screen management ────────────────────────────────────────────────────────
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
@@ -404,6 +408,19 @@ function stopRecording() {
 // ── Grading ──────────────────────────────────────────────────────────────────
 async function gradeAnswer(transcript) {
   const card = state.currentCard;
+
+  if (!hasAnswerField(card)) {
+    showFeedback({
+      grade: 'good',
+      scoreLabel: 'Error',
+      feedback:
+        "This card's note type only has one field, so there's no answer to grade against. Please grade manually.",
+    });
+    document.getElementById('teachBtn').style.display = 'none';
+    console.error('Grading error: card has no second field to use as the answer.', card);
+    return;
+  }
+
   const front = extractCardText(card.fields[Object.keys(card.fields)[0]].value, state.currentDeck);
   const back = extractCardText(card.fields[Object.keys(card.fields)[1]].value, state.currentDeck);
   const persona = getPersona(state.currentDeck);
